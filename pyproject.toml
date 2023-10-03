@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "tau_tools"
+version = "0.1.0"
+description = "Tools for accessing and using Tel Aviv University websites"
+authors = ["Arazim Project <144990276+arazonim@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+colorama = "^0.4.6"
+beautifulsoup4 = "^4.12.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

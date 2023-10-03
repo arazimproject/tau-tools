@@ -1,0 +1,256 @@
+"""
+Download all of the study plans at Tel Aviv University.
+This file has been created by inspecting the network requests when accessing https://exact-sciences.tau.ac.il/search-studies-programs?faculta=0300.
+"""
+
+import json
+import time
+from typing import Optional
+
+import requests
+from colorama import Fore, init
+
+
+def request(request, api_url="https://tochniot.tau.ac.il/graphql", delay=1):
+    """
+    Send a GraphQL request to the `api_url`.
+    Check for errors.
+    Sleep for `delay` seconds, to prevent overwhelming anything.
+    """
+
+    response = requests.post(api_url, json=request)
+    result = json.loads(response.text)["data"]
+    time.sleep(delay)
+
+    if (
+        "results" in result
+        and "body" in result["results"]
+        and "Tau" in result["results"]["body"]
+        and "errmsgeng" in result["results"]["body"]["Tau"]
+    ):
+        raise Exception(result["results"]["body"]["Tau"]["errmsgeng"])
+
+    return result
+
+
+class DepartmentInfo:
+    def __init__(self, name: str, id: str):
+        self.name = name
+        self.id = id
+
+
+class FacultyInfo:
+    def __init__(self, name: str, id: str, departments: list[DepartmentInfo]):
+        self.name = name
+        self.id = id
+        self.departments = departments
+
+
+class SchoolInfo:
+    def __init__(self, name: str, id: str, faculties: list[FacultyInfo]):
+        self.name = name
+        self.id = id
+        self.faculties = faculties
+
+
+class PlanInfo:
+    def __init__(
+        self, name: str, id: Optional[str], language: str, year: str, egedid: str
+    ):
+        self.name = name
+        self.id = id
+        self.language = language
+
+        if id is None:
+            self.find_id(year, egedid)
+
+    def find_id(self, year: str, egedid: str):
+        """Tries to find the plan id (tcid) from the `year` and `egedid`"""
+        try:
+            response = request(
+                {
+                    "operationName": "results",
+                    "variables": {
+                        "filters": {
+                            "safa": "1",
+                            "shana": year,
+                            "egedid": egedid,
+                            "tab": "generalExplanation",
+                        },
+                        "apiUrl": "ydhesberklali",
+                    },
+                    "query": "query results($apiUrl: String!, $filters: JSON!) {\n  results(apiUrl: $apiUrl, filters: $filters) {\n    body\n    __typename\n  }\n}\n",
+                }
+            )
+            self.id = response["results"]["body"][0]["tcid"]
+        except:
+            pass
+
+
+def get_schools() -> list[SchoolInfo]:
+    """Returns a list of tuples (name, id) of the schools."""
+
+    hierarchy = request(
+        {
+            "operationName": "getProgramsHierarchy",
+            "variables": {"search": {"safa": "1"}},
+            "query": "query getProgramsHierarchy($search: JSON!) {\n  getProgramsHierarchy(search: $search) {\n    id\n    name\n    rama {\n      hasUndefinedBetsefer\n      id\n      name\n      field\n      rama {\n        id\n        name\n        field\n        chug\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+        }
+    )
+
+    return [
+        SchoolInfo(
+            school["name"],
+            school["id"],
+            [
+                FacultyInfo(
+                    faculty["name"],
+                    faculty["id"],
+                    [
+                        DepartmentInfo(department["name"], department["id"])
+                        for department in faculty["rama"]
+                    ],
+                )
+                for faculty in school["rama"]
+                if faculty["rama"] is not None
+            ],
+        )
+        for school in hierarchy["getProgramsHierarchy"]
+    ]
+
+
+def get_plans(school: SchoolInfo) -> list[PlanInfo]:
+    """Get all of the available plans at the specified school."""
+
+    plans = request(
+        {
+            "operationName": "getPrograms",
+            "variables": {
+                "search": {
+                    "safa": "1",
+                    "faculta": [
+                        {
+                            "id": school.id,
+                            "name": school.name,
+                            "__typename": "HierarchyFilter",
+                            "rama": [
+                                {
+                                    "id": faculty.id,
+                                    "name": faculty.name,
+                                    "__typename": "BetseferFilter",
+                                    "hasUndefinedBetsefer": "false",
+                                    "field": "betsefer",
+                                    "rama": [
+                                        {
+                                            "id": department.id,
+                                            "name": department.name,
+                                            "__typename": "ChugFilter",
+                                            "field": "chug",
+                                            "chug": True,
+                                        }
+                                        for department in faculty.departments
+                                    ],
+                                }
+                                for faculty in school.faculties
+                            ],
+                        }
+                    ],
+                    "isLoadPrograms": True,
+                },
+                "from": 0,
+                "size": 1000,
+            },
+            "query": "query getPrograms($search: JSON!, $from: Int, $size: Int) {\n  getPrograms(search: $search, from: $from, size: $size) {\n    total\n    results {\n      tclongkey\n      shana\n      teur\n      toar\n      currentSafa\n      isSafaAfucha\n      tcid\n      egedid\n      faculta\n      teurfaculta\n      teurfacultaeng\n      betsefer\n      teurbetsefer\n      teurbetsefereng\n      maslul\n      chug\n      teurchug\n      teurchugeng\n      teurfaculta2\n      teurfacultaeng2\n      pail\n      title\n      pailheara\n      pailhearaeng\n      showtochnit\n      __typename\n    }\n    from\n    refreshData\n    __typename\n  }\n}\n",
+        }
+    )
+
+    return [
+        PlanInfo(
+            result["teur"],
+            result["tcid"],
+            result["currentSafa"],
+            result["shana"],
+            result["egedid"],
+        )
+        for result in plans["getPrograms"]["results"]
+    ]
+
+
+def get_plan(plan: PlanInfo, year=2023) -> dict[str, list[str]]:
+    details = request(
+        {
+            "operationName": "results",
+            "variables": {
+                "filters": {
+                    "tcid": plan.id,
+                    "shana": str(year),
+                    "safa": plan.language,
+                    "tab": "programStudy",
+                },
+                "apiUrl": "ydtochnit",
+            },
+            "query": "query results($apiUrl: String!, $filters: JSON!) {\n  results(apiUrl: $apiUrl, filters: $filters) {\n    body\n    __typename\n  }\n}\n",
+        }
+    )
+
+    categories = {}
+    courses = set()
+
+    for part in details["results"]["body"][0]["rama"]:
+        if "rama" not in part:
+            continue
+
+        for category in part["rama"]:
+            if "kurs" not in category:
+                continue
+
+            category_name = category["teurrama"]
+            category_courses = []
+
+            for course in category["kurs"]:
+                if course["kursid"] in courses:
+                    continue
+                courses.add(course["kursid"])
+
+                category_courses.append(course["kursid"])
+
+            if len(category_courses) != 0:
+                categories[part["teurrama"] + " - " + category_name] = category_courses
+
+    return categories
+
+
+def main(output_file="plans.json"):
+    init()
+
+    result = {}
+
+    schools = get_schools()
+    for school_index, school in enumerate(schools):
+        print(
+            f"{Fore.BLUE}[School]{Fore.RESET} Fetching {school.name} ({school_index + 1}/{len(schools)})"
+        )
+
+        result[school.name] = {}
+        plans = [plan for plan in get_plans(school) if plan.id is not None]
+
+        for plan_index, plan in enumerate(plans):
+            print(
+                f"{Fore.CYAN}[Plan]{Fore.RESET}   Fetching {plan.name} ({plan_index + 1}/{len(plans)})...",
+                end=" ",
+            )
+
+            try:
+                plan_details = get_plan(plan)
+                if len(plan_details) != 0:
+                    result[school.name][plan.name] = plan_details
+                print(f"{Fore.GREEN}Success{Fore.RESET}")
+            except Exception as e:
+                print(f"{Fore.RED}Failed!{Fore.RESET} ({e})")
+
+    with open(output_file, "w") as f:
+        json.dump(result, f, ensure_ascii=False)
+
+
+if __name__ == "__main__":
+    main()
