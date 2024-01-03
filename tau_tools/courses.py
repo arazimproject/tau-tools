@@ -9,7 +9,7 @@ import json
 import time
 import urllib.parse
 from enum import Enum
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
@@ -52,8 +52,8 @@ class GroupInfo:
         group: str,
         faculty: str,
         lecturer: str,
-        exams: list[ExamInfo],
-        lessons: list[LessonInfo],
+        exams: List[ExamInfo],
+        lessons: List[LessonInfo],
     ):
         self.name = name
         self.id = id
@@ -70,7 +70,7 @@ def request(url: str, s: Optional[requests.Session] = None):
     return BeautifulSoup(response.text, "html.parser")
 
 
-def get_schools() -> list[tuple[str, list[str]]]:
+def get_schools() -> List[Tuple[str, List[str]]]:
     """
     Returns a list of tuples (school_name, selection_options) of the schools.
     The `selection_options` are either the option for everything in the school,
@@ -98,7 +98,7 @@ def get_exams(
     year: str,
     semester: str,
     s: Optional[requests.Session] = None,
-) -> list[ExamInfo]:
+) -> List[ExamInfo]:
     """Example: `get_exams("03683087", "01", "2023", "1")`"""
 
     url = "https://www.ims.tau.ac.il/Tal/KR/Bhina_L.aspx?" + urllib.parse.urlencode(
@@ -135,7 +135,7 @@ def get_exams(
     return result
 
 
-def _parse_result_page(result_soup: BeautifulSoup, year: str) -> list[GroupInfo]:
+def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]:
     all_rows = result_soup.select_one("#frmgrid table[dir=rtl]").select("tr")
     all_rows = all_rows[1:]
     i = 0
@@ -231,12 +231,12 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> list[GroupInfo]
 
 
 def get_school_courses(
-    school_details: tuple[str, list[str]],
+    school_details: Tuple[str, List[str]],
     year="2023",
     semester=Semester.ALL,
     delay=1.0,
     print_progress=True,
-) -> list[GroupInfo]:
+) -> List[GroupInfo]:
     school_select, school_options = school_details
     result = []
 
@@ -258,9 +258,7 @@ def get_school_courses(
             print(
                 f"{Fore.GREEN}[Search]{Fore.RESET} Searching option ({option_index + 1}/{len(school_options)})"
             )
-        data = payload | {
-            school_select: option,
-        }
+        data = {**payload, school_select: option}
         search_result_page = BeautifulSoup(
             s.post(
                 "https://www.ims.tau.ac.il/Tal/KR/Search_L.aspx",

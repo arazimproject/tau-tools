@@ -5,7 +5,7 @@ This file has been created by inspecting the network requests when accessing htt
 
 import json
 import time
-from typing import Optional
+from typing import Dict, List, Optional
 
 import requests
 from colorama import Fore, init
@@ -40,14 +40,14 @@ class DepartmentInfo:
 
 
 class FacultyInfo:
-    def __init__(self, name: str, id: str, departments: list[DepartmentInfo]):
+    def __init__(self, name: str, id: str, departments: List[DepartmentInfo]):
         self.name = name
         self.id = id
         self.departments = departments
 
 
 class SchoolInfo:
-    def __init__(self, name: str, id: str, faculties: list[FacultyInfo]):
+    def __init__(self, name: str, id: str, faculties: List[FacultyInfo]):
         self.name = name
         self.id = id
         self.faculties = faculties
@@ -87,7 +87,7 @@ class PlanInfo:
             pass
 
 
-def get_schools() -> list[SchoolInfo]:
+def get_schools() -> List[SchoolInfo]:
     """Returns a list of tuples (name, id) of the schools."""
 
     hierarchy = request(
@@ -119,7 +119,7 @@ def get_schools() -> list[SchoolInfo]:
     ]
 
 
-def get_plans(school: SchoolInfo) -> list[PlanInfo]:
+def get_plans(school: SchoolInfo) -> List[PlanInfo]:
     """Get all of the available plans at the specified school."""
 
     plans = request(
@@ -176,7 +176,7 @@ def get_plans(school: SchoolInfo) -> list[PlanInfo]:
     ]
 
 
-def get_plan(plan: PlanInfo, year=2023) -> dict[str, list[str]]:
+def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
     details = request(
         {
             "operationName": "results",
