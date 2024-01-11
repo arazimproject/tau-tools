@@ -1,0 +1,19 @@
+name: Run All Scrapers
+on:
+    schedule:
+        - cron: "8 6 * * SUN,THU"
+jobs:
+    run-all-scrapers:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install pip depdencies
+              run: pip install requests colorama beautifulsoup4
+            - name: Run course scraper
+              run: python3 tau_tools/courses.py
+            - name: Run plan scraper
+              run: python3 tau_tools/plans.py
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: scraped-data
+                  path: ./*.json
