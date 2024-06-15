@@ -5,6 +5,7 @@ This file has been created by inspecting the network requests when accessing htt
 
 import json
 import time
+import sys
 from typing import Dict, List, Optional
 
 import requests
@@ -220,7 +221,7 @@ def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
     return categories
 
 
-def main(output_file="plans.json"):
+def main(output_file_template="plans{year}.json", year=2023):
     init()
 
     result = {}
@@ -241,16 +242,19 @@ def main(output_file="plans.json"):
             )
 
             try:
-                plan_details = get_plan(plan)
+                plan_details = get_plan(plan, year)
                 if len(plan_details) != 0:
                     result[school.name][plan.name] = plan_details
                 print(f"{Fore.GREEN}Success{Fore.RESET}")
             except Exception as e:
                 print(f"{Fore.RED}Failed!{Fore.RESET} ({e})")
 
-    with open(output_file, "w") as f:
+    with open(output_file_template.format(year=year), "w") as f:
         json.dump(result, f, ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        main(year=int(sys.argv[1]))
+    else:
+        main()

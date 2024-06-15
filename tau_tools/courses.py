@@ -10,6 +10,7 @@ import time
 import urllib.parse
 from enum import Enum
 from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 import requests
 from bs4 import BeautifulSoup
@@ -32,16 +33,14 @@ class ExamInfo:
         self.type = type
 
 
+@dataclass
 class LessonInfo:
-    def __init__(
-        self, semester: str, day: str, time: str, building: str, room: str, type: str
-    ):
-        self.semester = semester
-        self.day = day
-        self.time = time
-        self.building = building
-        self.room = room
-        self.type = type
+    semester: str
+    day: str
+    time: str
+    building: str
+    room: str
+    type: str
 
 
 class GroupInfo:
@@ -190,9 +189,10 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
                     if course_lecturer == None and len(curr_lecturer) != 0:
                         course_lecturer = curr_lecturer
 
-                    if ofen_horaa != "":
+                    lesson_info = LessonInfo(semester, day, time, building, room, ofen_horaa)
+                    if ofen_horaa != "" and lesson_info not in course_lessons:
                         course_lessons.append(
-                            LessonInfo(semester, day, time, building, room, ofen_horaa)
+                            lesson_info
                         )
                         semester_set.add(semester)
                     i += 1
