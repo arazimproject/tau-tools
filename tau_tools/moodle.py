@@ -1,12 +1,13 @@
-import os
 import json
+import os
 import re
-from typing import List, Optional
-import requests
-from requests.utils import dict_from_cookiejar, cookiejar_from_dict
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import List, Optional, Union
+
+import requests
 from bs4 import BeautifulSoup
+from requests.utils import cookiejar_from_dict, dict_from_cookiejar
 
 
 @dataclass
@@ -28,9 +29,54 @@ class AssignmentInfo:
 
 
 @dataclass
+class AttachmentInfo:
+    filename: str
+    url: str
+
+
+@dataclass
+class AdditionalAssignmentInfo:
+    attachments: List[AttachmentInfo]
+    description: str
+    grade: Optional[int]
+    grade_date: Optional[datetime]
+    checker: Optional[str]
+    feedback_comments: Optional[str]
+    feedback_files: Optional[List[AttachmentInfo]]
+
+
+@dataclass
+class GradeInfo:
+    assignment_id: int
+    assignment_name: str
+    grade: Optional[Union[float, str]]
+    """The minimal grade possible for the assignment"""
+    grade_min: Optional[Union[int, str]]
+    """The maximal grade possible for the assignment"""
+    grade_max: Optional[Union[int, str]]
+    """The average grade of the assignment submissions"""
+    grade_average: Optional[Union[float, str]]
+    feedback: str
+
+
+@dataclass
 class RecordingInfo:
     name: str
     url: str
+
+
+def try_float(s: str):
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+
+def try_int(s: str):
+    try:
+        return int(s)
+    except ValueError:
+        return s
 
 
 class MoodleException(Exception):
@@ -48,6 +94,12 @@ class Moodle:
     SESSKEY_REGEX = re.compile(
         r'"https:\/\/moodle\.tau\.ac\.il\/login\/logout\.php\?sesskey=(.*?)"'
     )
+    USER_ID_REGEX = re.compile(
+        r'"https:\/\/moodle\.tau\.ac\.il\/user\/profile\.php\?id=(.*?)"'
+    )
+
+    sesskey: str
+    user_id: int
 
     def __init__(
         self, username: str, id: str, password: str, session_file: Optional[str] = None
@@ -61,9 +113,16 @@ class Moodle:
         if session_file is not None and os.path.exists(session_file):
             with open(session_file, "r") as f:
                 session_info = json.load(f)
-            self.session.cookies = cookiejar_from_dict(session_info["cookies"])
-            self.sesskey = session_info["sesskey"]
-            return
+
+            if (
+                "sesskey" in session_info
+                and "cookies" in session_info
+                and "user_id" in session_info
+            ):
+                self.session.cookies = cookiejar_from_dict(session_info["cookies"])
+                self.sesskey = session_info["sesskey"]
+                self.user_id = session_info["user_id"]
+                return
 
         self._sign_in()
 
@@ -91,7 +150,8 @@ class Moodle:
                 "RelayState": "https://moodle.tau.ac.il/login/index.php",
             },
         )
-        self.sesskey: str = Moodle.SESSKEY_REGEX.findall(response.text)[0]
+        self.sesskey = Moodle.SESSKEY_REGEX.findall(response.text)[0]
+        self.user_id = int(Moodle.USER_ID_REGEX.findall(response.text)[0])
 
         if self.session_file is not None:
             with open(self.session_file, "w") as f:
@@ -99,6 +159,7 @@ class Moodle:
                     {
                         "cookies": dict_from_cookiejar(self.session.cookies),
                         "sesskey": self.sesskey,
+                        "user_id": self.user_id,
                     },
                     f,
                 )
@@ -125,6 +186,20 @@ class Moodle:
 
         return result["data"]
 
+    def get_page(
+        self, page_id: Optional[str] = None, page_url: Optional[str] = None
+    ) -> BeautifulSoup:
+        if page_id is None and page_url is None:
+            raise Exception(
+                "At least one of `page_id` or `page_url` must be specified!"
+            )
+        if page_url is None:
+            page_url = f"https://moodle.tau.ac.il/course/view.php?id={page_id}"
+        result = self.session.get(page_url)
+        with open("out.html", "w") as f:
+            f.write(result.text)
+        return BeautifulSoup(result.text, "html.parser")
+
     def get_courses(self, only_visible=True) -> List[CourseInfo]:
         response = self.request_service(
             "block_mycourses_get_enrolled_courses_by_timeline_classification",
@@ -150,7 +225,7 @@ class Moodle:
                 info["id"], info["fullname"], info["hidden"], info["isfavourite"]
             )
             for info in response["courses"]
-            if not (only_visible and info["visible"])
+            if not only_visible or info["visible"]
         ]
 
     def get_assignments(
@@ -175,7 +250,7 @@ class Moodle:
 
         return [
             AssignmentInfo(
-                info["id"],
+                info["instance"],
                 info["name"],
                 info["course"]["id"],
                 info["course"]["fullname"],
@@ -184,6 +259,38 @@ class Moodle:
             )
             for info in response["events"]
         ]
+
+    def get_additional_info(self, assignment_id: int):
+        # TODO: parse for grade, grade_date, checker, feedback_comments and feedback_files. Note that a lot of different subsets of these optionals are possible.
+
+        page = BeautifulSoup(
+            self.session.get(
+                f"https://moodle.tau.ac.il/mod/assign/view.php?id={assignment_id}"
+            ).text,
+            "html.parser",
+        )
+
+        attachments = [
+            AttachmentInfo(a.text, a["href"])
+            for a in page.find_all("a")
+            if "href" in a.attrs and "introattachment" in a["href"]
+        ]
+
+        description = page.find("div", {"class": "activity-description"})
+
+        return AdditionalAssignmentInfo(
+            attachments,
+            str(description) if description.text.strip() != "" else "",
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+    def download_url(self, url: str):
+        response = self.session.get(url)
+        return response.content
 
     def get_recordings(self, course_id: int):
         response = self.session.post(
@@ -198,3 +305,39 @@ class Moodle:
             # filtering is needed to ignore the settings link
             if "Viewer.aspx" in a["href"]
         ]
+
+    def get_grades(self, course_id: int) -> List[GradeInfo]:
+        response = self.session.get(
+            f"https://moodle.tau.ac.il/course/user.php?mode=grade&id={course_id}&user={self.user_id}"
+        )
+        response = BeautifulSoup(response.text, "html.parser")
+
+        grades = []
+        for tr in response.find_all("tr"):
+            tds: List[BeautifulSoup] = tr.find_all("td")
+
+            if len(tds) != 6:
+                continue
+
+            a: BeautifulSoup = tds[0].find("a")
+
+            if a is None:
+                continue
+
+            grade_range = tds[3].text.split("–")
+
+            grades.append(
+                GradeInfo(
+                    assignment_id=int(a["href"].split("=")[-1]),
+                    assignment_name=a.text,
+                    grade=None if tds[2].text == "-" else try_float(tds[2].text),
+                    grade_min=try_int(grade_range[0]),
+                    grade_max=try_int(grade_range[1]),
+                    grade_average=None
+                    if tds[4].text == "-"
+                    else try_float(tds[4].text),
+                    feedback=tds[5].text.strip(),
+                )
+            )
+
+        return grades
