@@ -1,17 +1,24 @@
-[tool.poetry]
+[project]
 name = "tau-tools"
-version = "1.0.1"
+version = "0.1.1"
 description = "Tools for accessing and using Tel Aviv University websites"
-authors = ["Arazim Project <144990276+arazonim@users.noreply.github.com>"]
+authors = [
+    { name = "Arazim Project", email = "144990276+arazonim@users.noreply.github.com" },
+]
+dependencies = ["requests>=2.32.3", "colorama>=0.4.6", "beautifulsoup4>=4.12.3"]
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.31.0"
-colorama = "^0.4.6"
-beautifulsoup4 = "^4.12.2"
-
+requires-python = ">= 3.8"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tau_tools"]

@@ -6,15 +6,17 @@ when accessing https://www.ims.tau.ac.il/Tal/KR/Search_P.aspx.
 """
 
 import json
-import time
+import sys
 import urllib.parse
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Tuple
-from dataclasses import dataclass
 
 import requests
 from bs4 import BeautifulSoup
 from colorama import Fore, init
+
+from tau_tools.utilities import request
 
 HEBREW_SEMESTERS = {"a": "א'", "b": "ב'"}
 
@@ -25,12 +27,12 @@ class Semester(Enum):
     ALL = ["a", "b"]
 
 
+@dataclass
 class ExamInfo:
-    def __init__(self, moed: str, date: str, hour: str, type: str):
-        self.moed = moed
-        self.date = date
-        self.hour = hour
-        self.type = type
+    moed: str
+    date: str
+    hour: str
+    type: str
 
 
 @dataclass
@@ -43,30 +45,15 @@ class LessonInfo:
     type: str
 
 
+@dataclass
 class GroupInfo:
-    def __init__(
-        self,
-        name: str,
-        id: str,
-        group: str,
-        faculty: str,
-        lecturer: str,
-        exams: List[ExamInfo],
-        lessons: List[LessonInfo],
-    ):
-        self.name = name
-        self.id = id
-        self.group = group
-        self.faculty = faculty
-        self.lecturer = lecturer
-        self.exams = exams
-        self.lessons = lessons
-
-
-def request(url: str, s: Optional[requests.Session] = None):
-    response = s.get(url) if s is not None else requests.get(url)
-
-    return BeautifulSoup(response.text, "html.parser")
+    name: str
+    id: str
+    group: str
+    faculty: str
+    lecturer: str
+    exams: List[ExamInfo]
+    lessons: List[LessonInfo]
 
 
 def get_schools() -> List[Tuple[str, List[str]]]:
@@ -76,7 +63,15 @@ def get_schools() -> List[Tuple[str, List[str]]]:
     or a list of every option for faculties/types in the school.
     """
 
-    search_page = request("https://www.ims.tau.ac.il/Tal/KR/Search_P.aspx")
+    search_page = BeautifulSoup(
+        request(
+            "get",
+            "https://www.ims.tau.ac.il/Tal/KR/Search_P.aspx",
+            cache_category="courses",
+            cache_key="schools",
+        ),
+        "html.parser",
+    )
     all_schools = search_page.select(".table1 select.freeselect.list")
     all_options = []
 
@@ -107,7 +102,13 @@ def get_exams(
             "sem": year + semester,
         }
     )
-    result_soup = request(url, s)
+    result_soup = request(
+        "get",
+        url,
+        s,
+        cache_category="courses",
+        cache_key=f"exam-{course_id.replace('-', '')}-{group}-{year}-{semester}",
+    )
 
     if result_soup.select(".msgerrs"):
         # An error ocurred, assume there are no exams
@@ -158,7 +159,7 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
                 course_faculty = list(all_rows[i].children)[1].text
                 i += 1
                 # look for the times and instructor section
-                while not ("kotcol" in all_rows[i - 1]["class"]):
+                while "kotcol" not in all_rows[i - 1]["class"]:
                     i += 1
 
                 course_lecturer = None
@@ -186,14 +187,14 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
                         semester,
                     ) = split
 
-                    if course_lecturer == None and len(curr_lecturer) != 0:
+                    if course_lecturer is None and len(curr_lecturer) != 0:
                         course_lecturer = curr_lecturer
 
-                    lesson_info = LessonInfo(semester, day, time, building, room, ofen_horaa)
+                    lesson_info = LessonInfo(
+                        semester, day, time, building, room, ofen_horaa
+                    )
                     if ofen_horaa != "" and lesson_info not in course_lessons:
-                        course_lessons.append(
-                            lesson_info
-                        )
+                        course_lessons.append(lesson_info)
                         semester_set.add(semester)
                     i += 1
 
@@ -208,7 +209,7 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
                         course_exams = get_exams(
                             course_id, course_group, year, str(sem)
                         )
-                    except:
+                    except Exception:
                         pass
 
                 courses.append(
@@ -231,10 +232,10 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
 
 
 def get_school_courses(
+    school_index: int,
     school_details: Tuple[str, List[str]],
     year="2023",
     semester=Semester.ALL,
-    delay=1.0,
     print_progress=True,
 ) -> List[GroupInfo]:
     school_select, school_options = school_details
@@ -259,20 +260,27 @@ def get_school_courses(
                 f"{Fore.GREEN}[Search]{Fore.RESET} Searching option ({option_index + 1}/{len(school_options)})"
             )
         data = {**payload, school_select: option}
+        page_number = 0
         search_result_page = BeautifulSoup(
-            s.post(
+            request(
+                "post",
                 "https://www.ims.tau.ac.il/Tal/KR/Search_L.aspx",
+                s,
                 data=data,
                 headers={
                     "Accept": "text/html,application/xhtml+xml,application/xml",
                     "Content-Type": "application/x-www-form-urlencoded",
                     "User-Agent": "CourseScrape",
                 },
-            ).text,
+                cache_category="courses",
+                cache_key=f"courses-{year}-{school_index}-{option_index}-{page_number}",
+            ),
             "html.parser",
         )
 
         while len(search_result_page.select("#next")) > 0:
+            page_number += 1
+
             if print_progress:
                 print(f"{Fore.GREEN}[Search]{Fore.RESET} Fetching page")
             result += _parse_result_page(search_result_page, year)
@@ -285,19 +293,21 @@ def get_school_courses(
                     pass
 
             search_result_page = BeautifulSoup(
-                s.post(
+                request(
+                    "post",
                     "https://www.ims.tau.ac.il/Tal/KR/Search_L.aspx",
+                    s,
                     data=data,
                     headers={
                         "Accept": "text/html,application/xhtml+xml,application/xml",
                         "Content-Type": "application/x-www-form-urlencoded",
                         "User-Agent": "CourseScrape",
                     },
-                ).text,
+                    cache_category="courses",
+                    cache_key=f"courses-{year}-{option_index}-{page_number}",
+                ),
                 "html.parser",
             )
-
-            time.sleep(delay)
 
         # The final page
         result += _parse_result_page(search_result_page, year)
@@ -317,7 +327,7 @@ def main(
         print(
             f"{Fore.BLUE}[School]{Fore.RESET} Fetching school ({school_index + 1}/{len(schools)})"
         )
-        groups += get_school_courses(school, year, semesters)
+        groups += get_school_courses(school_index, school, year, semesters)
 
     for semester in semesters.value:
         output_file = output_file_template.format(year=year, semester=semester)
@@ -325,7 +335,9 @@ def main(
         courses = {}
         for group in groups:
             group_lessons = [
-                l for l in group.lessons if l.semester == HEBREW_SEMESTERS[semester]
+                lesson
+                for lesson in group.lessons
+                if lesson.semester == HEBREW_SEMESTERS[semester]
             ]
             if len(group_lessons) == 0:
                 continue
@@ -357,4 +369,7 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        main(year=sys.argv[1])
+    else:
+        main()

@@ -4,24 +4,36 @@ This file has been created by inspecting the network requests when accessing htt
 """
 
 import json
-import time
 import sys
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-import requests
 from colorama import Fore, init
 
+from tau_tools.utilities import request
 
-def request(request, api_url="https://tochniot.tau.ac.il/graphql", delay=1):
+
+def request_graphql(
+    request_json,
+    api_url="https://tochniot.tau.ac.il/graphql",
+    delay=1,
+    cache_key: Optional[str] = None,
+):
     """
     Send a GraphQL request to the `api_url`.
     Check for errors.
     Sleep for `delay` seconds, to prevent overwhelming anything.
     """
 
-    response = requests.post(api_url, json=request)
-    result = json.loads(response.text)["data"]
-    time.sleep(delay)
+    response = request(
+        "post",
+        api_url,
+        json=request_json,
+        cache_category="plans",
+        cache_key=cache_key,
+        delay=delay,
+    )
+    result = json.loads(response)["data"]
 
     if (
         "results" in result
@@ -34,24 +46,24 @@ def request(request, api_url="https://tochniot.tau.ac.il/graphql", delay=1):
     return result
 
 
+@dataclass
 class DepartmentInfo:
-    def __init__(self, name: str, id: str):
-        self.name = name
-        self.id = id
+    name: str
+    id: str
 
 
+@dataclass
 class FacultyInfo:
-    def __init__(self, name: str, id: str, departments: List[DepartmentInfo]):
-        self.name = name
-        self.id = id
-        self.departments = departments
+    name: str
+    id: str
+    departments: List[DepartmentInfo]
 
 
+@dataclass
 class SchoolInfo:
-    def __init__(self, name: str, id: str, faculties: List[FacultyInfo]):
-        self.name = name
-        self.id = id
-        self.faculties = faculties
+    name: str
+    id: str
+    faculties: List[FacultyInfo]
 
 
 class PlanInfo:
@@ -68,7 +80,7 @@ class PlanInfo:
     def find_id(self, year: str, egedid: str):
         """Tries to find the plan id (tcid) from the `year` and `egedid`"""
         try:
-            response = request(
+            response = request_graphql(
                 {
                     "operationName": "results",
                     "variables": {
@@ -81,22 +93,24 @@ class PlanInfo:
                         "apiUrl": "ydhesberklali",
                     },
                     "query": "query results($apiUrl: String!, $filters: JSON!) {\n  results(apiUrl: $apiUrl, filters: $filters) {\n    body\n    __typename\n  }\n}\n",
-                }
+                },
+                cache_key=f"get-id-{year}-{egedid}",
             )
             self.id = response["results"]["body"][0]["tcid"]
-        except:
+        except Exception:
             pass
 
 
 def get_schools() -> List[SchoolInfo]:
     """Returns a list of tuples (name, id) of the schools."""
 
-    hierarchy = request(
+    hierarchy = request_graphql(
         {
             "operationName": "getProgramsHierarchy",
             "variables": {"search": {"safa": "1"}},
             "query": "query getProgramsHierarchy($search: JSON!) {\n  getProgramsHierarchy(search: $search) {\n    id\n    name\n    rama {\n      hasUndefinedBetsefer\n      id\n      name\n      field\n      rama {\n        id\n        name\n        field\n        chug\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
-        }
+        },
+        cache_key="schools",
     )
 
     return [
@@ -123,7 +137,7 @@ def get_schools() -> List[SchoolInfo]:
 def get_plans(school: SchoolInfo) -> List[PlanInfo]:
     """Get all of the available plans at the specified school."""
 
-    plans = request(
+    plans = request_graphql(
         {
             "operationName": "getPrograms",
             "variables": {
@@ -162,7 +176,8 @@ def get_plans(school: SchoolInfo) -> List[PlanInfo]:
                 "size": 1000,
             },
             "query": "query getPrograms($search: JSON!, $from: Int, $size: Int) {\n  getPrograms(search: $search, from: $from, size: $size) {\n    total\n    results {\n      tclongkey\n      shana\n      teur\n      toar\n      currentSafa\n      isSafaAfucha\n      tcid\n      egedid\n      faculta\n      teurfaculta\n      teurfacultaeng\n      betsefer\n      teurbetsefer\n      teurbetsefereng\n      maslul\n      chug\n      teurchug\n      teurchugeng\n      teurfaculta2\n      teurfacultaeng2\n      pail\n      title\n      pailheara\n      pailhearaeng\n      showtochnit\n      __typename\n    }\n    from\n    refreshData\n    __typename\n  }\n}\n",
-        }
+        },
+        cache_key=f"plans-{school.id}",
     )
 
     return [
@@ -178,7 +193,7 @@ def get_plans(school: SchoolInfo) -> List[PlanInfo]:
 
 
 def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
-    details = request(
+    details = request_graphql(
         {
             "operationName": "results",
             "variables": {
@@ -191,7 +206,8 @@ def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
                 "apiUrl": "ydtochnit",
             },
             "query": "query results($apiUrl: String!, $filters: JSON!) {\n  results(apiUrl: $apiUrl, filters: $filters) {\n    body\n    __typename\n  }\n}\n",
-        }
+        },
+        cache_key=f"plan-{year}-{plan.id}-{plan.language}",
     )
 
     categories = {}
