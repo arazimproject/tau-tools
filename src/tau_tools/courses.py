@@ -14,9 +14,8 @@ from typing import List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
-from rich.table import Column
 
-from tau_tools.logging import progress, setup_logging, log
+from tau_tools.logging import log, progress, setup_logging
 from tau_tools.utilities import request
 
 HEBREW_SEMESTERS = {"a": "א'", "b": "ב'"}
@@ -331,7 +330,9 @@ def get_school_courses(
 
 
 def main(
-    output_file_template="{year}{semester}.json", year=2024, semesters=Semester.ALL
+    output_file_template="courses-{year}{semester}.json",
+    year=2024,
+    semesters=Semester.ALL,
 ):
     year = str(year)
 

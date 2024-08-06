@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from tau_tools.logging import console, progress, setup_logging, log
+from tau_tools.logging import progress, setup_logging, log
 from tau_tools.utilities import request
 
 
