@@ -26,6 +26,6 @@ def setup_logging():
         level="NOTSET",
         format=FORMAT,
         datefmt="[%X]",
-        handlers=[RichHandler(console=console, markup=True)],
+        handlers=[RichHandler(console=console)],
     )
     install()

@@ -257,7 +257,8 @@ def main(output_file_template="plans{year}.json", year=2024):
                         result[school.name][plan.name] = plan_details
                 except Exception as e:
                     log.warning(
-                        f"Error fetching {plan.name} in {school.name}: [red]{e}[/red]"
+                        f"Error fetching {plan.name} in {school.name}: [red]{e}[/red]",
+                        extra={"markup": True}
                     )
                 progress.update(school_task_id, advance=1)
             progress.update(school_task_id, visible=False)
