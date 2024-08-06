@@ -14,8 +14,9 @@ from typing import List, Optional, Tuple
 
 import requests
 from bs4 import BeautifulSoup
-from colorama import Fore, init
+from rich.table import Column
 
+from tau_tools.logging import progress, setup_logging, log
 from tau_tools.utilities import request
 
 HEBREW_SEMESTERS = {"a": "א'", "b": "ב'"}
@@ -93,7 +94,7 @@ def get_exams(
     semester: str,
     s: Optional[requests.Session] = None,
 ) -> List[ExamInfo]:
-    """Example: `get_exams("03683087", "01", "2023", "1")`"""
+    """Example: `get_exams("03683087", "01", "2024", "1")`"""
 
     url = "https://www.ims.tau.ac.il/Tal/KR/Bhina_L.aspx?" + urllib.parse.urlencode(
         {
@@ -102,12 +103,15 @@ def get_exams(
             "sem": year + semester,
         }
     )
-    result_soup = request(
-        "get",
-        url,
-        s,
-        cache_category="courses",
-        cache_key=f"exam-{course_id.replace('-', '')}-{group}-{year}-{semester}",
+    result_soup = BeautifulSoup(
+        request(
+            "get",
+            url,
+            s,
+            cache_category="courses",
+            cache_key=f"exam-{course_id.replace('-', '')}-{group}-{year}-{semester}",
+        ),
+        "html.parser",
     )
 
     if result_soup.select(".msgerrs"):
@@ -135,11 +139,14 @@ def get_exams(
     return result
 
 
-def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]:
+def parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]:
     all_rows = result_soup.select_one("#frmgrid table[dir=rtl]").select("tr")
     all_rows = all_rows[1:]
     i = 0
     courses = []
+    page_task_id = progress.add_task(
+        "[green]Parsing page and fetching course exam data...", total=len(all_rows)
+    )
     while i < len(all_rows):
         try:
             if (
@@ -227,6 +234,8 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
                 i += 1
         except KeyError:
             i += 1
+        progress.update(page_task_id, completed=i)
+    progress.update(page_task_id, visible=False)
 
     return courses
 
@@ -234,9 +243,8 @@ def _parse_result_page(result_soup: BeautifulSoup, year: str) -> List[GroupInfo]
 def get_school_courses(
     school_index: int,
     school_details: Tuple[str, List[str]],
-    year="2023",
+    year="2024",
     semester=Semester.ALL,
-    print_progress=True,
 ) -> List[GroupInfo]:
     school_select, school_options = school_details
     result = []
@@ -254,11 +262,12 @@ def get_school_courses(
     elif semester == Semester.SPRING:
         payload["ckSem"] = "2"
 
+    task_id = None
+    if len(school_options) != 1:
+        task_id = progress.add_task(
+            "[blue]Fetching school options...", total=len(school_options)
+        )
     for option_index, option in enumerate(school_options):
-        if print_progress:
-            print(
-                f"{Fore.GREEN}[Search]{Fore.RESET} Searching option ({option_index + 1}/{len(school_options)})"
-            )
         data = {**payload, school_select: option}
         page_number = 0
         search_result_page = BeautifulSoup(
@@ -280,10 +289,10 @@ def get_school_courses(
 
         while len(search_result_page.select("#next")) > 0:
             page_number += 1
-
-            if print_progress:
-                print(f"{Fore.GREEN}[Search]{Fore.RESET} Fetching page")
-            result += _parse_result_page(search_result_page, year)
+            result += parse_result_page(search_result_page, year)
+            log.info(
+                f"Finished parsing page {page_number} of school {school_index + 1}"
+            )
 
             data = {"dir1": "1"}
             for hidden_input in search_result_page.select("input[type=hidden]"):
@@ -304,33 +313,43 @@ def get_school_courses(
                         "User-Agent": "CourseScrape",
                     },
                     cache_category="courses",
-                    cache_key=f"courses-{year}-{option_index}-{page_number}",
+                    cache_key=f"courses-{year}-{school_index}-{option_index}-{page_number}",
                 ),
                 "html.parser",
             )
 
         # The final page
-        result += _parse_result_page(search_result_page, year)
+        result += parse_result_page(search_result_page, year)
+
+        if task_id is not None:
+            progress.update(task_id, advance=1)
+
+    if task_id is not None:
+        progress.update(task_id, visible=False)
 
     return result
 
 
 def main(
-    output_file_template="{year}{semester}.json", year="2023", semesters=Semester.ALL
+    output_file_template="{year}{semester}.json", year=2024, semesters=Semester.ALL
 ):
-    init()
+    year = str(year)
 
     schools = get_schools()
     groups: list[GroupInfo] = []
 
-    for school_index, school in enumerate(schools):
-        print(
-            f"{Fore.BLUE}[School]{Fore.RESET} Fetching school ({school_index + 1}/{len(schools)})"
+    with progress:
+        school_task = progress.add_task(
+            "[purple]Fetching schools...", total=len(schools)
         )
-        groups += get_school_courses(school_index, school, year, semesters)
+        for school_index, school in enumerate(schools):
+            progress.update(school_task, advance=1)
+            groups += get_school_courses(school_index, school, year, semesters)
 
     for semester in semesters.value:
-        output_file = output_file_template.format(year=year, semester=semester)
+        output_file = output_file_template.format(
+            year=str(int(year) + 1), semester=semester
+        )
 
         courses = {}
         for group in groups:
@@ -369,7 +388,9 @@ def main(
 
 
 if __name__ == "__main__":
+    setup_logging()
+
     if len(sys.argv) == 2:
-        main(year=sys.argv[1])
+        main(year=int(sys.argv[1]) - 1)
     else:
         main()

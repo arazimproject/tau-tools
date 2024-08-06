@@ -45,13 +45,13 @@ Full documentation will be available soon!
 
 You can get mostly up to date data from the following URLs:
 
-- https://arazim-project.com/courses/2024a.json
-- https://arazim-project.com/courses/2024b.json
-- https://arazim-project.com/courses/plans.json
+-   https://arazim-project.com/courses/2025a.json
+-   https://arazim-project.com/courses/2025b.json
+-   https://arazim-project.com/courses/plans.json
 
 ### Get course details
 
-You can get all details about a specific year's courses by running `python3 -m tau_tools.courses`!
+You can get all details about a specific year's courses by running `python3 -m tau_tools.courses` or `python3 -m tau_tools.courses 2025`!
 
 Example:
 
@@ -93,7 +93,7 @@ Example:
 
 ### Get the available plans
 
-You can get all details about the current study plans in Tel Aviv University by running `python3 -m tau_tools.plans`!
+You can get all details about the current (and past) study plans in Tel Aviv University by running `python3 -m tau_tools.plans` or `python3 -m tau_tools.plans 2025`!
 
 Example:
 
@@ -113,15 +113,16 @@ Example:
 
 # Roadmap
 
-- [x] Get courses
-- [x] Get plans
-- [ ] Create a nicer interface to the IMS
-- [x] Create a nicer interface to the Moodle
-- [ ] Make the scripts accept command-line parameters
-- [x] Add the package to PyPI for a simpler installation
+-   [x] Get courses
+-   [x] Get plans
+-   [ ] Create a nicer interface to the IMS
+-   [x] Create a nicer interface to the Moodle
+-   [ ] Make the scripts accept command-line parameters
+-   [x] Add the package to PyPI for a simpler installation
+-   [x] Show progress bars during scraping
 
 # Acknowledgements
 
 This repository contains modified versions of the following tools:
 
-- [CourseScrape](https://github.com/TAUHacks/CourseScrape)
+-   [CourseScrape](https://github.com/TAUHacks/CourseScrape)

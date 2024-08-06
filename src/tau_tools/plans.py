@@ -8,8 +8,7 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from colorama import Fore, init
-
+from tau_tools.logging import console, progress, setup_logging, log
 from tau_tools.utilities import request
 
 
@@ -192,7 +191,7 @@ def get_plans(school: SchoolInfo) -> List[PlanInfo]:
     ]
 
 
-def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
+def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
     details = request_graphql(
         {
             "operationName": "results",
@@ -237,40 +236,41 @@ def get_plan(plan: PlanInfo, year=2023) -> Dict[str, List[str]]:
     return categories
 
 
-def main(output_file_template="plans{year}.json", year=2023):
-    init()
-
+def main(output_file_template="plans{year}.json", year=2024):
     result = {}
 
     schools = get_schools()
-    for school_index, school in enumerate(schools):
-        print(
-            f"{Fore.BLUE}[School]{Fore.RESET} Fetching {school.name} ({school_index + 1}/{len(schools)})"
+    with progress:
+        schools_task_id = progress.add_task(
+            "[purple]Fetching schools...", total=len(schools)
         )
-
-        result[school.name] = {}
-        plans = [plan for plan in get_plans(school) if plan.id is not None]
-
-        for plan_index, plan in enumerate(plans):
-            print(
-                f"{Fore.CYAN}[Plan]{Fore.RESET}   Fetching {plan.name} ({plan_index + 1}/{len(plans)})...",
-                end=" ",
+        for school in schools:
+            result[school.name] = {}
+            plans = [plan for plan in get_plans(school) if plan.id is not None]
+            school_task_id = progress.add_task(
+                f"[green]Fetching school '{school.name}' plans...", total=len(plans)
             )
+            for plan in plans:
+                try:
+                    plan_details = get_plan(plan, year)
+                    if len(plan_details) != 0:
+                        result[school.name][plan.name] = plan_details
+                except Exception as e:
+                    log.warning(
+                        f"Error fetching {plan.name} in {school.name}: [red]{e}[/red]"
+                    )
+                progress.update(school_task_id, advance=1)
+            progress.update(school_task_id, visible=False)
+            progress.update(schools_task_id, advance=1)
 
-            try:
-                plan_details = get_plan(plan, year)
-                if len(plan_details) != 0:
-                    result[school.name][plan.name] = plan_details
-                print(f"{Fore.GREEN}Success{Fore.RESET}")
-            except Exception as e:
-                print(f"{Fore.RED}Failed!{Fore.RESET} ({e})")
-
-    with open(output_file_template.format(year=year), "w") as f:
+    with open(output_file_template.format(year=year + 1), "w") as f:
         json.dump(result, f, ensure_ascii=False)
 
 
 if __name__ == "__main__":
+    setup_logging()
+
     if len(sys.argv) == 2:
-        main(year=int(sys.argv[1]))
+        main(year=int(sys.argv[1]) - 1)
     else:
         main()

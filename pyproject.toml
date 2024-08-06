@@ -1,11 +1,11 @@
 [project]
 name = "tau-tools"
-version = "0.1.1"
+version = "1.1.2"
 description = "Tools for accessing and using Tel Aviv University websites"
 authors = [
     { name = "Arazim Project", email = "144990276+arazonim@users.noreply.github.com" },
 ]
-dependencies = ["requests>=2.32.3", "colorama>=0.4.6", "beautifulsoup4>=4.12.3"]
+dependencies = ["requests>=2.32.3", "beautifulsoup4>=4.12.3", "rich>=13.7.1"]
 readme = "README.md"
 requires-python = ">= 3.8"
 
