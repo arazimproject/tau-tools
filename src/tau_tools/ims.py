@@ -18,7 +18,7 @@ class GradeInfo:
     course_id: str
     """The 8-digit ID of the course, e.g. 03661111"""
 
-    grade: int
+    grade: Optional[int]
     """The grade of the user in the course"""
 
     is_exempt: bool
@@ -170,9 +170,14 @@ class IMS:
                 grade = "".join([c for c in cells[5] if c.isnumeric()])
                 notes = cells[11]
 
-                if grade != "":
+                if grade != "" or notes != "":
                     results.append(
-                        GradeInfo(semester, course_id, int(grade), "פטור" in notes)
+                        GradeInfo(
+                            semester,
+                            course_id,
+                            None if grade == "" else int(grade),
+                            "פטור" in notes,
+                        )
                     )
 
         return results
