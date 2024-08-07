@@ -151,6 +151,29 @@ Example:
 
 Running `python3 -m tau_tools.collect` will go over all courses and moodle exams JSONs in the current directory and place the moodle exam data into the courses jsons. It also creates a summary `courses.json` which contains rolled-up information from all of the courses jsons.
 
+An optional `corrections.json` file is available to account for errors in the moodle exam bank.
+
+The current corrections are:
+
+```json
+{
+    "03514321": "03514312",
+    "03662016": "03662106",
+    "03211110": "03211100",
+    "032121012": "03213101",
+    "03683035": "03683058",
+    "03664841": "03724841",
+    "03724453": "03724553",
+    "03513118": "03653118",
+    "03664041": "03684041",
+    "03651105": "03681105",
+    "03684229": "03684429",
+    "03214308": "03213804",
+    "03664117": "03214117",
+    "03664127": "03214127"
+}
+```
+
 # Roadmap
 
 -   [x] Get courses

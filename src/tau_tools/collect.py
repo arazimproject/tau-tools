@@ -53,6 +53,12 @@ def main(output_file="courses.json"):
     with open("moodle-exams.json", "r") as f:
         moodle_exams = json.load(f)
 
+    corrections = {}
+    if os.path.exists("corrections.json"):
+        log.info("Found corrections JSON")
+        with open("corrections.json", "r") as f:
+            corrections = json.load(f)
+
     for year_exams in moodle_exams:
         year = year_exams["year"]
         if f"{year}a" not in semester_jsons or f"{year}b" not in semester_jsons:
@@ -68,6 +74,10 @@ def main(output_file="courses.json"):
         for filename, url in year_exams["results"]:
             exam_course_id = "".join(filename.split("-")[:2]).strip()
             exam_course_id = exam_course_id.split(" ")[0]
+
+            if exam_course_id in corrections:
+                exam_course_id = corrections[exam_course_id]
+
             semesters = ["a", "b"]
             if "סמ א" in filename:
                 semesters = ["a"]
@@ -75,8 +85,8 @@ def main(output_file="courses.json"):
                 semesters = ["b"]
 
             count = 0
-            # Account for +-1 errors in the year.
-            for y in [int(year), int(year) + 1, int(year) - 1]:
+            # Account for +-1 errors in the year, and offset to use our numbering.
+            for y in [int(year) + 1, int(year) + 2, int(year)]:
                 for semester in semesters:
                     if f"{y}{semester}" not in semester_jsons:
                         continue
