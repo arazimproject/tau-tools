@@ -85,8 +85,8 @@ def main(output_file="courses.json"):
                 semesters = ["b"]
 
             count = 0
-            # Account for +-1 errors in the year, and offset to use our numbering.
-            for y in [int(year) + 1, int(year) + 2, int(year)]:
+            # Account for +-1 errors in the year.
+            for y in [int(year), int(year) + 1, int(year) - 1]:
                 for semester in semesters:
                     if f"{y}{semester}" not in semester_jsons:
                         continue
@@ -109,10 +109,9 @@ def main(output_file="courses.json"):
                     "Added to semester a only: " + exam_course_id,
                 )
 
-        with open(f"courses-{year}a.json", "w") as f:
-            json.dump(semester_jsons[f"{year}a"], f, ensure_ascii=False)
-        with open(f"courses-{year}b.json", "w") as f:
-            json.dump(semester_jsons[f"{year}b"], f, ensure_ascii=False)
+    for semester, semester_courses in semester_jsons.items():
+        with open(f"courses-{semester}.json", "w") as f:
+            json.dump(semester_courses, f, ensure_ascii=False)
 
 
 if __name__ == "__main__":
