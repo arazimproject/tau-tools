@@ -41,13 +41,27 @@ print(m.get_recordings(courses[0]))
 
 Full documentation will be available soon!
 
+### IMS API
+
+Here's an example of using the TAU Tools ims package:
+
+```python
+from tau_tools.ims import IMS
+
+ims = IMS("username", "123456789", "password")
+grades = ims.get_all_grades([2023, 2024])
+print(grades)
+```
+
 ## Scrapers
 
 You can get mostly up to date data from the following URLs:
 
--   https://arazim-project.com/courses/2025a.json
--   https://arazim-project.com/courses/2025b.json
+-   https://arazim-project.com/courses/courses-2025a.json
+-   https://arazim-project.com/courses/courses-2025b.json
 -   https://arazim-project.com/courses/plans.json
+
+You can also get rolled-up information about all of the courses in https://arazim-project.com/courses/courses.json, using the TAU Tools [collect](./src/tau_tools/collect.py) script.
 
 ### Get course details
 
@@ -115,7 +129,7 @@ Example:
 
 -   [x] Get courses
 -   [x] Get plans
--   [ ] Create a nicer interface to the IMS
+-   [x] Create a nicer interface to the IMS
 -   [x] Create a nicer interface to the Moodle
 -   [ ] Make the scripts accept command-line parameters
 -   [x] Add the package to PyPI for a simpler installation
@@ -126,3 +140,4 @@ Example:
 This repository contains modified versions of the following tools:
 
 -   [CourseScrape](https://github.com/TAUHacks/CourseScrape)
+-   [CLIMS](https://github.com/TAUHacks/clims)
