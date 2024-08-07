@@ -61,7 +61,7 @@ You can get mostly up to date data from the following URLs:
 -   https://arazim-project.com/courses/courses-2025b.json
 -   https://arazim-project.com/courses/plans.json
 
-You can also get rolled-up information about all of the courses in https://arazim-project.com/courses/courses.json, using the TAU Tools [collect](./src/tau_tools/collect.py) script.
+You can also get rolled-up information about all of the courses in https://arazim-project.com/courses/courses.json, using the [collect](#collect-the-data-together) script.
 
 ### Get course details
 
@@ -124,6 +124,32 @@ Example:
     ...
 }
 ```
+
+### Get the Moodle exam bank
+
+You can get links to all of the exams hosted on Moodle (copying the exams themselves is prohibited) by running `python3 -m tau_tools.moodle_exams`!
+
+Example:
+
+```json
+{
+    {
+        "results": [
+            [
+                "0321-1100-אלגברה לינארית לפיז-מועד א.pdf",
+                "https://moodle.tau.ac.il/pluginfile.php/421164/mod_folder/content/0/0321-1100-%D7%90%D7%9C%D7%92%D7%91%D7%A8%D7%94%20%D7%9C%D7%99%D7%A0%D7%90%D7%A8%D7%99%D7%AA%20%D7%9C%D7%A4%D7%99%D7%96-%D7%9E%D7%95%D7%A2%D7%93%20%D7%90.pdf"
+            ],
+            ...
+        ],
+        "year": 2024
+    },
+    ...
+}
+```
+
+### Collect the data together
+
+Running `python3 -m tau_tools.collect` will go over all courses and moodle exams JSONs in the current directory and place the moodle exam data into the courses jsons. It also creates a summary `courses.json` which contains rolled-up information from all of the courses jsons.
 
 # Roadmap
 
