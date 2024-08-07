@@ -196,8 +196,6 @@ class Moodle:
         if page_url is None:
             page_url = f"https://moodle.tau.ac.il/course/view.php?id={page_id}"
         result = self.session.get(page_url)
-        with open("out.html", "w") as f:
-            f.write(result.text)
         return BeautifulSoup(result.text, "html.parser")
 
     def get_courses(self, only_visible=True) -> List[CourseInfo]:
