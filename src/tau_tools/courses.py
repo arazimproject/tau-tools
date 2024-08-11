@@ -109,6 +109,7 @@ def get_exams(
             s,
             cache_category="courses",
             cache_key=f"exam-{course_id.replace('-', '')}-{group}-{year}-{semester}",
+            delay=0.2,
         ),
         "html.parser",
     )

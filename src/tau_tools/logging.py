@@ -23,7 +23,7 @@ progress = Progress(
 def setup_logging():
     FORMAT = "%(message)s"
     logging.basicConfig(
-        level="NOTSET",
+        level=logging.INFO,
         format=FORMAT,
         datefmt="[%X]",
         handlers=[RichHandler(console=console)],

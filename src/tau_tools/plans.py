@@ -4,6 +4,7 @@ This file has been created by inspecting the network requests when accessing htt
 """
 
 import json
+import math
 import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -210,7 +211,6 @@ def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
     )
 
     categories = {}
-    courses = set()
 
     for part in details["results"]["body"][0]["rama"]:
         if "rama" not in part:
@@ -223,20 +223,35 @@ def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
             category_name = category["teurrama"]
             category_courses = []
 
+            total_hours_required = 0
+            try:
+                total_hours_required = int(category["shaot"].split(" ")[1].split("-")[0]) # סה״כ 26-28 ש״ס -> 26
+            except:
+                pass
+
+            smallest_course_hours = math.inf # the number of hours in the smallest course in this category
+
             for course in category["kurs"]:
-                if course["kursid"] in courses:
-                    continue
-                courses.add(course["kursid"])
+                try:
+                    smallest_course_hours = min(smallest_course_hours, int(course["shaotuni"]))
+                except:
+                    pass
 
                 category_courses.append(course["kursid"])
 
+            if smallest_course_hours == 0:
+                smallest_course_hours = 1
+
             if len(category_courses) != 0:
-                categories[part["teurrama"] + " - " + category_name] = category_courses
+                categories[part["teurrama"] + " - " + category_name] = {
+                    "courses": category_courses,
+                    "count": min(math.ceil(total_hours_required / smallest_course_hours), len(category_courses)),
+                }
 
     return categories
 
 
-def main(output_file_template="plans{year}.json", year=2024):
+def main(output_file_template="plans-{year}.json", year=2024):
     result = {}
 
     schools = get_schools()
