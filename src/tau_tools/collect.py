@@ -31,17 +31,31 @@ def main(output_file="courses.json"):
         semester_jsons[semester] = courses
 
         for course_id in courses:
+            lecturers = set()
+            for group in courses[course_id]["groups"]:
+                if group["lecturer"] is not None:
+                    for lecturer in group["lecturer"].split(", "):
+                        if lecturer != "":
+                            lecturers.add(lecturer.replace(" ", " "))
+
             if course_id not in result:
                 result[course_id] = {
                     "name": courses[course_id]["name"],
+                    "faculty": courses[course_id]["faculty"],
                     "semesters": [semester],
+                    "lecturers": list(lecturers),
                 }
             else:
                 if result[course_id]["name"] != courses[course_id]["name"]:
                     log.warning(
                         f"Name mismatch of course {course_id}: changed from {courses[course_id]['name']} to {result[course_id]['name']}"
                     )
+                if result[course_id]["faculty"] != courses[course_id]["faculty"]:
+                    log.warning(
+                        f"Fcaulty mismatch of course {course_id}: changed from {courses[course_id]['faculty']} to {result[course_id]['faculty']}"
+                    )
                 result[course_id]["semesters"].append(semester)
+                result[course_id]["lecturers"] = list(set(result[course_id]["lecturers"]).union(lecturers))
 
     with open(output_file, "w") as f:
         json.dump(result, f, ensure_ascii=False)
