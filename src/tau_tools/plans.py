@@ -7,7 +7,7 @@ import json
 import math
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from tau_tools.logging import progress, setup_logging, log
 from tau_tools.utilities import request
@@ -192,7 +192,7 @@ def get_plans(school: SchoolInfo) -> List[PlanInfo]:
     ]
 
 
-def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
+def get_plan(plan: PlanInfo, year=2024) -> Dict[str, Any]:
     details = request_graphql(
         {
             "operationName": "results",
@@ -221,7 +221,7 @@ def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
                 continue
 
             category_name = category["teurrama"]
-            category_courses = []
+            category_courses = {}
 
             total_hours_required = 0
             try:
@@ -236,8 +236,16 @@ def get_plan(plan: PlanInfo, year=2024) -> Dict[str, List[str]]:
                     smallest_course_hours = min(smallest_course_hours, int(course["shaotuni"]))
                 except:
                     pass
-
-                category_courses.append(course["kursid"])
+                try:
+                    course_weight = int(course["mishkal"])
+                except ValueError:
+                    course_weight = 0
+                
+                course_info = {}
+                course_info["id"] = course["kursid"]
+                course_info["weight"] = str(course_weight)
+                
+                category_courses[course["kursid"]] = course_info
 
             if smallest_course_hours == 0:
                 smallest_course_hours = 1
@@ -285,7 +293,6 @@ def main(output_file_template="plans-{year}.json", year=2024):
 
 if __name__ == "__main__":
     setup_logging()
-
     if len(sys.argv) == 2:
         main(year=int(sys.argv[1]) - 1)
     else:
