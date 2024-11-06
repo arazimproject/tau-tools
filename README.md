@@ -53,6 +53,29 @@ grades = ims.get_all_grades([2023, 2024])
 print(grades)
 ```
 
+## Lobby Dashboard
+
+You can get information about exams happening today by running `python3 -m tau_tools.lobby_dashboard`.
+
+Example:
+
+```python
+[
+    ExamInfo(
+        course_id='03682162',
+        course_name='מערכות הפעלה',
+        group='08',
+        semester=2,
+        start_hour='09:00',
+        end_hour='12:00',
+        building="אודיטור' לב",
+        room='009',
+        surname_letters='א - ד'
+    ),
+    ...
+]
+```
+
 ## Scrapers
 
 You can get mostly up to date data from the following URLs:

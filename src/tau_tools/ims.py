@@ -24,6 +24,9 @@ class GradeInfo:
     is_exempt: bool
     """Is the student exempt from this course?"""
 
+    study_plan_id: str
+    """The study plan ID the course is a part of"""
+
 
 class IMS:
     def __init__(self, username: str, id: str, password: str):
@@ -177,6 +180,7 @@ class IMS:
                             course_id,
                             None if grade == "" else int(grade),
                             "פטור" in notes,
+                            study_plan_id,
                         )
                     )
 
