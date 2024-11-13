@@ -80,11 +80,11 @@ Example:
 
 You can get mostly up to date data from the following URLs:
 
--   https://arazim-project.com/courses/courses-2025a.json
--   https://arazim-project.com/courses/courses-2025b.json
--   https://arazim-project.com/courses/plans.json
+- https://arazim-project.com/data/courses-2025a.json
+- https://arazim-project.com/data/courses-2025b.json
+- https://arazim-project.com/data/plans-2025.json
 
-You can also get rolled-up information about all of the courses in https://arazim-project.com/courses/courses.json, using the [collect](#collect-the-data-together) script.
+You can also get rolled-up information about all of the courses in https://arazim-project.com/data/courses.json, using the [collect](#collect-the-data-together) script.
 
 ### Get course details
 
@@ -180,36 +180,36 @@ The current corrections are:
 
 ```json
 {
-    "03514321": "03514312",
-    "03662016": "03662106",
-    "03211110": "03211100",
-    "032121012": "03213101",
-    "03683035": "03683058",
-    "03664841": "03724841",
-    "03724453": "03724553",
-    "03513118": "03653118",
-    "03664041": "03684041",
-    "03651105": "03681105",
-    "03684229": "03684429",
-    "03214308": "03213804",
-    "03664117": "03214117",
-    "03664127": "03214127"
+  "03514321": "03514312",
+  "03662016": "03662106",
+  "03211110": "03211100",
+  "032121012": "03213101",
+  "03683035": "03683058",
+  "03664841": "03724841",
+  "03724453": "03724553",
+  "03513118": "03653118",
+  "03664041": "03684041",
+  "03651105": "03681105",
+  "03684229": "03684429",
+  "03214308": "03213804",
+  "03664117": "03214117",
+  "03664127": "03214127"
 }
 ```
 
 # Roadmap
 
--   [x] Get courses
--   [x] Get plans
--   [x] Create a nicer interface to the IMS
--   [x] Create a nicer interface to the Moodle
--   [ ] Make the scripts accept command-line parameters
--   [x] Add the package to PyPI for a simpler installation
--   [x] Show progress bars during scraping
+- [x] Get courses
+- [x] Get plans
+- [x] Create a nicer interface to the IMS
+- [x] Create a nicer interface to the Moodle
+- [ ] Make the scripts accept command-line parameters
+- [x] Add the package to PyPI for a simpler installation
+- [x] Show progress bars during scraping
 
 # Acknowledgements
 
 This repository contains modified versions of the following tools:
 
--   [CourseScrape](https://github.com/TAUHacks/CourseScrape)
--   [CLIMS](https://github.com/TAUHacks/clims)
+- [CourseScrape](https://github.com/TAUHacks/CourseScrape)
+- [CLIMS](https://github.com/TAUHacks/clims)
