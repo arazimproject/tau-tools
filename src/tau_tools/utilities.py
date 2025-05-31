@@ -48,3 +48,17 @@ def request(
             f.write(response.text)
 
     return response.text
+
+
+def try_float(s: str):
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+
+def try_int(s: str):
+    try:
+        return int(s)
+    except ValueError:
+        return s
