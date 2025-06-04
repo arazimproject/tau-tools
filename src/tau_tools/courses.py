@@ -16,6 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from tau_tools.logging import log, progress, setup_logging
+from tau_tools.prerequisites import get_prerequisites
 from tau_tools.utilities import request
 
 HEBREW_SEMESTERS = {"a": "א'", "b": "ב'"}
@@ -384,6 +385,24 @@ def main(
                     ],
                 }
             )
+
+        with progress:
+            prerequisites_task_id = progress.add_task(
+                "[purple]Fetching prerequisites...", total=len(courses)
+            )
+            for course_id in courses:
+                try:
+                    prerequisites = get_prerequisites(
+                        course_id,
+                        courses[course_id]["groups"][0]["group"],
+                        year,
+                        semester,
+                    )
+                    courses[course_id]["prerequisites"] = prerequisites
+                except Exception:
+                    pass
+                progress.update(prerequisites_task_id, advance=1)
+            progress.update(prerequisites_task_id, visible=False)
 
         with open(output_file, "w") as f:
             json.dump(courses, f, ensure_ascii=False)

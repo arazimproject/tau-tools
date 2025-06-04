@@ -9,6 +9,8 @@ import requests
 from bs4 import BeautifulSoup
 from requests.utils import cookiejar_from_dict, dict_from_cookiejar
 
+from tau_tools.utilities import try_float, try_int
+
 
 @dataclass
 class CourseInfo:
@@ -63,20 +65,6 @@ class GradeInfo:
 class RecordingInfo:
     name: str
     url: str
-
-
-def try_float(s: str):
-    try:
-        return float(s)
-    except ValueError:
-        return s
-
-
-def try_int(s: str):
-    try:
-        return int(s)
-    except ValueError:
-        return s
 
 
 class MoodleException(Exception):
